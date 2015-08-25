@@ -33,9 +33,9 @@ void ofApp::setup(){
     camWidth 		= 320;	// try to grab at this size.
 	camHeight 		= 240;
     comboFBO.allocate(960, 240);
-    videoTexture0.allocate(camWidth,camHeight, GL_RGBA);
-    videoTexture1.allocate(camWidth,camHeight, GL_RGBA);
-    videoTexture2.allocate(camWidth,camHeight, GL_RGBA);
+    videoTexture0.allocate(camWidth,camHeight, GL_RGB);
+    videoTexture1.allocate(camWidth,camHeight, GL_RGB);
+    videoTexture2.allocate(camWidth,camHeight, GL_RGB);
 	
     colorImg1.allocate(960, 240);
     //colorImg2.allocate(640, 480);
@@ -139,9 +139,6 @@ void ofApp::update(){
     //cout << model.getRotationAngle(1) << endl;
     
     thread.lock();
-    //colorImg1.setFromPixels(thread.pixels0);
-    //colorImg2.setFromPixels(thread.pixels1);
-    //colorImg3.setFromPixels(thread.pixels2);
     videoTexture0.loadData(thread.pixels0);
     videoTexture1.loadData(thread.pixels1);
     videoTexture2.loadData(thread.pixels2);
@@ -173,26 +170,19 @@ void ofApp::update(){
     grayDiff3.threshold(threshold);
     grayImage3 *= grayDiff3;
     
-    pixels.setFromPixels(grayImage1.getPixels(), 640, 480, 1);
-    videoTexture0.readToPixels(pixels);
-    pixels.setFromPixels(grayImage2.getPixels(), 640, 480, 1);
-    videoTexture1.readToPixels(pixels);
-    pixels.setFromPixels(grayImage3.getPixels(), 640, 480, 1);
-    videoTexture2.readToPixels(pixels);
+
     */
-    videoTexture2.clear();
     comboFBO.begin();
     videoTexture0.draw( 0, 0);
     videoTexture1.draw(320, 0);
     videoTexture2.draw(640, 0);
     comboFBO.end();
    
-    //comboFBO.readToPixels(pixels);
-    tex0=comboFBO.getTextureReference();
-    tex0.readToPixels(pixelsGoal);
     
-    colorImg1.setFromPixels(pixelsGoal);
-    tex0 = colorImg1.getTextureReference();
+    tex0=comboFBO.getTextureReference(); //put FBO containing the combined cam textures into an ofTexture...
+    tex0.readToPixels(pixelsGoal); //...and copy the pixels from the texture into an ofPixels object...
+    pixelsGoal.setImageType(OF_IMAGE_COLOR); //...and set the color to RGB, discarding the Alpha channel...
+    colorImg1.setFromPixels(pixelsGoal); //...finally copy the pixels into an OpenCV color image
     
     grayImage1 = colorImg1;
     grayDiff1.absDiff(grayBg1, grayImage1);
@@ -203,8 +193,9 @@ void ofApp::update(){
         grayBg1 = grayImage1;
         bLearnBakground = false;
     }
-
     
+    pixelsNow.setFromPixels(grayImage1.getPixels(), 320, 240, 3);
+     //grayImage1.getPixels();
     
     //Sphere Deform update
     vector<ofPoint> &vertices = sphere.getMesh().getVertices();
@@ -221,8 +212,7 @@ void ofApp::update(){
         vertices[i] = v;
     }
     
-    //pixelsNow. = (pixelsGoal - pixelsNow);
-    
+    //grayImage1.getTextureReference().readToPixels(pixelsGoal);
     
     for (int i=0; i<vertices.size(); i++) {
         ofVec2f t = sphere.getMesh().getTexCoords()[i];
@@ -250,17 +240,10 @@ void ofApp::update(){
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-    tex0.draw(320, 240);
-    //comboFBO.draw(0,480);
-    //colorImg1.draw(320, 240);
-    //grayImage.draw(0, 0, 264, 96);
-    //grayImage1.draw(0, 0, 1320, 480);
-    //grayImage2.draw(640,0,1280, 480);
-    //colorImg1.draw(0, 240, 1260, 480);
-    //colorImg3.draw(640, 0, 960,240);
-    
-    /** Store camera image in fbo **/
 
+    comboFBO.draw(0,480);
+    colorImg1.draw(320, 240);
+  
     //BRCOSA
 
 brcosaShader.begin();
