@@ -21,6 +21,9 @@ public:
         cam1.initGrabber(320,240,false);
         cam2.setDeviceID(2);
         cam2.initGrabber(320,240,false);
+        pixels0.setImageType(OF_IMAGE_COLOR);
+        pixels1.setImageType(OF_IMAGE_COLOR);
+        pixels2.setImageType(OF_IMAGE_COLOR);
 	}
 
 	void threadedFunction() {

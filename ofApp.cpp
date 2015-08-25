@@ -12,7 +12,9 @@ void ofApp::setup(){
     ofHideCursor();
     ofSetFullscreen(true);
     ofEnableDepthTest();
-
+    
+    refBrightness = 0;
+    brightMean = 1;
     //animation
     throb = sin(ofGetElapsedTimef())* 2.;
 
@@ -32,34 +34,25 @@ void ofApp::setup(){
     //VideoCam init & FBO setup
     camWidth 		= 320;	// try to grab at this size.
 	camHeight 		= 240;
-    comboFBO.allocate(960, 240);
+    comboFBO.allocate(480, 240);
     videoTexture0.allocate(camWidth,camHeight, GL_RGB);
     videoTexture1.allocate(camWidth,camHeight, GL_RGB);
     videoTexture2.allocate(camWidth,camHeight, GL_RGB);
-	
-    colorImg1.allocate(960, 240);
-    //colorImg2.allocate(640, 480);
-    //colorImg3.allocate(640, 480);
-    grayImage1.allocate(960, 240);
-    //grayImage2.allocate(640, 480);
-    //grayImage3.allocate(640, 480);
-    grayDiff1.allocate(960, 240);
-    //grayDiff2.allocate(640, 480);
-    //grayDiff3.allocate(640, 480);
-    
-    //colorImg1.getTextureReference();
-    
+
+    colorImg1.allocate(480, 240);
+    grayImage1.allocate(480, 240);
+    grayBg1.allocate(480, 240);
+    grayDiff1.allocate(480, 240);
     thread.startThread(true);
     float w = comboFBO.getWidth();
     float h = comboFBO.getHeight();
-    pixelsNow.allocate(960, 240, 3);
+    pixelsNow.allocate(480, 240, 3);
     pixelsNow.clear();
-    pixelsGoal.allocate(960,240, 3);
+    pixelsGoal.allocate(480,240, 3);
     pixelsGoal.clear();
-    pixelsTemp.allocate(960,240, 3);
+    pixelsTemp.allocate(480,240, 3);
     pixelsTemp.clear();
-    tex0.allocate(960, 240, 3);
-    //comboFBO.readToPixels(pixels);
+    tex0.allocate(480, 240, 3);
 
     //Phidget init
     //rotNow = rotThen = rotDif = 0.0;
@@ -79,12 +72,12 @@ void ofApp::setup(){
     //mesh = model.getMesh(0);
     glClipPlane(GL_CLIP_PLANE0, eqn0);
     glClipPlane(GL_CLIP_PLANE1, eqn1);
-    glClipPlane(GL_CLIP_PLANE2, eqn2);
-    glClipPlane(GL_CLIP_PLANE3, eqn3);
+    //glClipPlane(GL_CLIP_PLANE2, eqn2);
+    //glClipPlane(GL_CLIP_PLANE3, eqn3);
 
     //sphere init
     //sphere1.set(250,20);
-    sphere.set(150,70);
+    sphere.set(200,100);
     sphere.mapTexCoords(0, h, w, 0);
     vertices0 = sphere.getMesh().getVertices();
     rotaVec.y = 1;
@@ -92,7 +85,13 @@ void ofApp::setup(){
     
 	bLearnBakground = true;
 	threshold = 80;
-
+	verticesTemp = sphere.getMesh().getVertices();
+	verticesGoal = sphere.getMesh().getVertices();
+	verticesNow = sphere.getMesh().getVertices();
+	cout << verticesNow.size() << endl;
+	for (int i=0; i<verticesNow.size(); i++) {
+		verticesNow[i] *= 0;
+	}
 }
 
 
@@ -137,45 +136,18 @@ void ofApp::update(){
 
     //cout << mRota << endl;
     //cout << model.getRotationAngle(1) << endl;
-    
+  
     thread.lock();
     videoTexture0.loadData(thread.pixels0);
     videoTexture1.loadData(thread.pixels1);
     videoTexture2.loadData(thread.pixels2);
     thread.unlock();
     
-    
-    /*
-    grayImage1 = colorImg1;
-    grayImage2 = colorImg2;
-    grayImage3 = colorImg3;
-    
-    if (bLearnBakground == true){
-        grayBg1 = grayImage1;
-        grayBg2 = grayImage2;
-        grayBg3 = grayImage3;	// the = sign copys the pixels from grayImage into grayBg (operator overloading)
-        bLearnBakground = false;
-    }
-    
-    // take the abs value of the difference between background and incoming and then threshold:
-    grayDiff1.absDiff(grayBg1, grayImage1);
-    grayDiff1.threshold(threshold);
-    grayImage1 *= grayDiff1;
-    
-    grayDiff2.absDiff(grayBg2, grayImage2);
-    grayDiff2.threshold(threshold);
-    grayImage2 *= grayDiff2;
-    
-    grayDiff3.absDiff(grayBg3, grayImage3);
-    grayDiff3.threshold(threshold);
-    grayImage3 *= grayDiff3;
-    
-
-    */
+    //Combine the three camera images into 1 FBO
     comboFBO.begin();
     videoTexture0.draw( 0, 0);
-    videoTexture1.draw(320, 0);
-    videoTexture2.draw(640, 0);
+    videoTexture1.draw(160, 0);
+    videoTexture2.draw(320, 0);
     comboFBO.end();
    
     
@@ -185,17 +157,18 @@ void ofApp::update(){
     colorImg1.setFromPixels(pixelsGoal); //...finally copy the pixels into an OpenCV color image
     
     grayImage1 = colorImg1;
+    if (bLearnBakground == true){
+        grayBg1 = grayImage1; // the = sign copys the pixels from grayImage into grayBg (operator overloading)
+        bLearnBakground = false;
+    }
+    
+    // take the abs value of the difference between background and incoming and then threshold:
     grayDiff1.absDiff(grayBg1, grayImage1);
     grayDiff1.threshold(threshold);
     grayImage1 *= grayDiff1;
     
-    if (bLearnBakground == true){
-        grayBg1 = grayImage1;
-        bLearnBakground = false;
-    }
-    
-    pixelsNow.setFromPixels(grayImage1.getPixels(), 320, 240, 3);
-     //grayImage1.getPixels();
+    pixelsGoal.setFromPixels(grayImage1.getPixels(), 480, 240, 1);
+    //pixelsTemp.setFromPixels(pixelsGoal.getPixels(), 960, 240, 3);
     
     //Sphere Deform update
     vector<ofPoint> &vertices = sphere.getMesh().getVertices();
@@ -205,28 +178,46 @@ void ofApp::update(){
         float sx = sin( v.x * 5 );
         float sy = sin( v.y * 4 );
         float sz = sin( v.z * 6 );
-        v.x += sy * sz * 0;
-        v.y += sx * sz * 0;
-        v.z += sx * sy * 0;
-        v *= 100;
+        v.x += sy * sz * (sin(ofGetElapsedTimef())*0.1);
+        v.y += sx * sz * (cos(ofGetElapsedTimef())*0.1);
+        v.z += sx * sy * (sin(ofGetElapsedTimef())*0.1);
+        v *= 150;
         vertices[i] = v;
+		vertices[i] *= (verticesGoal[i] - verticesNow[i])* 1.01;
+		verticesNow[i] *= vertices[i];
     }
-    
+    //cout << pixelsGoal.getNumChannels() << endl;
     //grayImage1.getTextureReference().readToPixels(pixelsGoal);
+    totalBrightness = 0;
     
-    for (int i=0; i<vertices.size(); i++) {
-        ofVec2f t = sphere.getMesh().getTexCoords()[i];
+	for (int i=0; i<vertices.size(); i++) {
+		
+		verticesGoal[i] *= 0;
+		verticesGoal[i] += 1;
+		ofVec2f t = sphere.getMesh().getTexCoords()[i];
         t.x = ofClamp( t.x, 0, pixelsGoal.getWidth()-1 );
         t.y = ofClamp( t.y, 0, pixelsGoal.getHeight()-1 );
-        //pixelsTemp.setColor(t.x, t.y, abs((pixelsNow.getColor(t.x, t.y).getBrightness() - pixelsGoal.getColor(t.x, t.y).getBrightness())*0.1));
-        
-        //pixelsNow.setColor(t.x, t.y, pixelsTemp.getColor(t.x, t.y));
-        
         float br = pixelsGoal.getColor(t.x, t.y).getBrightness();
-        //cout << "br: " << br << endl;
-        vertices[i] *= 1 + br / 255.0 * 3.0;
+		
+		verticesGoal[i] *= 1 + br / 255.0 * 3.0;
+		//verticesNow[i] -= verticesGoal[i];
+		//cout << "Vertices: " << vertices[i] << endl;
+		//verticesTemp[i] = (verticesGoal[i] - verticesNow[i]) * 0.05;
+		//vertices[i] *= verticesGoal[i];
+		//vertices[i] *= verticesGoal[i];
+		//verticesTemp[i] = vertices[i];
+        totalBrightness += br;
+		//verticesNow[i] = vertices[i];
     }
-
+	
+    //brightMean += 1;
+    //refBrightness += totalBrightness;
+    if (totalBrightness > 200000){
+        bLearnBakground = true;
+        //refBrightness = totalBrightness;
+        totalBrightness = 0;
+    }
+    
     eqn0[3] = eqn1[3] = slice;
 
     glClipPlane(GL_CLIP_PLANE0, eqn0);
@@ -241,8 +232,11 @@ void ofApp::update(){
 //--------------------------------------------------------------
 void ofApp::draw(){
 
-    comboFBO.draw(0,480);
-    colorImg1.draw(320, 240);
+    //comboFBO.draw(0,480);
+    grayImage1.draw(0, 0);
+    grayBg1.draw(0, 240);
+    grayDiff1.draw(0, 480);
+    colorImg1.draw(0, 720);
   
     //BRCOSA
 
@@ -267,6 +261,7 @@ brcosaShader.begin();
                     //model.drawFaces();
                     sphere.rotate(rotNow * meshDir, 0, 1, 0);
                     sphere.drawWireframe();
+                    sphere.drawVertices();
             ofDisableDepthTest();
         glDisable(GL_CLIP_PLANE1);
         glDisable(GL_CLIP_PLANE0);
@@ -300,8 +295,7 @@ void ofApp::keyPressed(int key){
         brightness += 0.1;
           cout << "brightness:" << brightness << endl;
     }
-    else if (key == 'a'){                cout << "saturation:" << saturation << endl;
-
+    else if (key == 'a'){              
         brightness -= 0.1;
         cout << "brightness:" << brightness << endl;
     }
@@ -326,15 +320,17 @@ void ofApp::keyPressed(int key){
         encOffset = enc.encPos;
     }
     else if (key == OF_KEY_UP){
-        distanceGoal += 10;
-        cout << "Distance: " << distance << endl;
+		distanceGoal += 10;
+		cout << "Distance: " << distance << endl;
     }
     else if (key == OF_KEY_DOWN){
-        distanceGoal -= 10;
-        cout << "Distance: " << distance << endl;
+		distanceGoal -= 10;
+		cout << "Distance: " << distance << endl;
     }
     else if (key == 'l'){
-        bLearnBakground = true;
+		bLearnBakground = true;
+		verticesTemp = sphere.getMesh().getVertices();
+		verticesGoal = sphere.getMesh().getVertices();
     }
     else if(key =='+'){
     threshold ++;
@@ -355,7 +351,7 @@ void ofApp::gotMessage(ofMessage msg){
 
 //--------------------------------------------------------------
 void ofApp::animate(){
-    //throb = sin(ofGetElapsedTimef())* 2.0;
+    throb = sin(ofGetElapsedTimef())* 2.0;
 
     if (timer >= 5 && timer <= 6 ){
             distanceGoal = -100;

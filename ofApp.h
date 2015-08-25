@@ -32,7 +32,7 @@ class ofApp : public ofBaseApp{
     ofMesh              mesh;
 
     //misc variables
-    float               y, distance, distanceGoal, slice, color, gap, gapOffset, throb;
+    float               y, distance, distanceGoal, slice, color, gap, gapOffset, throb, totalBrightness, refBrightness, brightMean;
     float               rotNow, rotThen, mRota;
     int                 encOffset;
     bool                showModel, showPlane;
@@ -56,8 +56,12 @@ class ofApp : public ofBaseApp{
     ofPixels            pixelsTemp;
     //FBO
     ofFbo fbo;
-
+    
+    vector<ofPoint> vertices;
     vector<ofPoint> vertices0;
+    vector<ofPoint> verticesTemp;
+    vector<ofPoint> verticesGoal;
+    vector<ofPoint> verticesNow;
     float fader, brightness, contrast, saturation, x1, x2, y1, y2, z1, z2, dist1, dist2, scrDir, meshDir, startTime, timer;
     ofVec3f rotaVec;
 
@@ -67,16 +71,12 @@ class ofApp : public ofBaseApp{
     //Clip plane equations
     double eqn0[4] = {0., 0.1, -0.1, -23.};
     double eqn1[4] = {0., -0.1, 0.1, 23.};
-    double eqn2[4] = {0.0, 1.0, 0.0, 0.0};
-    double eqn3[4] = {0.0, 0.0, 0.0, 0.0};
+    //double eqn2[4] = {0.0, 1.0, 0.0, 0.0};
+    //double eqn3[4] = {0.0, 0.0, 0.0, 0.0};
     
-    ofxCvColorImage			colorImg1, colorImg2, colorImg3;
+    ofxCvColorImage			colorImg1;
     
-    ofxCvGrayscaleImage 	grayImage1, grayImage2, grayImage3;
-    ofxCvGrayscaleImage 	grayBg1, grayBg2, grayBg3;
-    ofxCvGrayscaleImage 	grayDiff1, grayDiff2, grayDiff3;
-    
-    //ofxCvContourFinder 	contourFinder;
+    ofxCvGrayscaleImage 	grayImage1, grayBg1, grayDiff1;
     
     int 				threshold;
     bool				bLearnBakground;
