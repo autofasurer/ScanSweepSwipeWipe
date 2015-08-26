@@ -17,7 +17,7 @@ void ofApp::setup(){
     brightMean = 1;
     //animation
     throb = sin(ofGetElapsedTimef())* 2.;
-
+	imgFader = 5;
     //3DCamera init
     distance = 960;
     distanceGoal = 960;
@@ -52,6 +52,8 @@ void ofApp::setup(){
     pixelsGoal.clear();
     pixelsTemp.allocate(480,240, 3);
     pixelsTemp.clear();
+	pixelsFader.allocate(480, 240, 1);
+	pixelsFader.set(imgFader);
     tex0.allocate(480, 240, 3);
 
     //Phidget init
@@ -81,8 +83,7 @@ void ofApp::setup(){
     sphere.mapTexCoords(0, h, w, 0);
     vertices0 = sphere.getMesh().getVertices();
     rotaVec.y = 1;
-    ofSetLineWidth(2);
-    
+    ofSetLineWidth(1);
 	bLearnBakground = true;
 	threshold = 80;
 	verticesTemp = sphere.getMesh().getVertices();
@@ -165,11 +166,17 @@ void ofApp::update(){
     // take the abs value of the difference between background and incoming and then threshold:
     grayDiff1.absDiff(grayBg1, grayImage1);
     grayDiff1.threshold(threshold);
-    grayImage1 *= grayDiff1;
+	
+	grayImage2.setFromPixels(pixelsFader);
     
-    pixelsGoal.setFromPixels(grayImage1.getPixels(), 480, 240, 1);
-    //pixelsTemp.setFromPixels(pixelsGoal.getPixels(), 960, 240, 3);
-    
+	grayImage1 *= grayDiff1;
+	grayImage1 += grayImageTemp;
+	
+	grayImageTemp = grayImage1;
+	grayImageTemp -= grayImage2;
+	
+	pixelsGoal.setFromPixels(grayImage1.getPixels(), 480, 240, 1);
+
     //Sphere Deform update
     vector<ofPoint> &vertices = sphere.getMesh().getVertices();
     for (int i=0; i<vertices.size(); i++) {
@@ -183,12 +190,9 @@ void ofApp::update(){
         v.z += sx * sy * (sin(ofGetElapsedTimef())*0.1);
         v *= 150;
         vertices[i] = v;
-		vertices[i] *= (verticesGoal[i] - verticesNow[i])* 1.01;
-		verticesNow[i] *= vertices[i];
+		vertices[i] *= verticesGoal[i];
     }
-    //cout << pixelsGoal.getNumChannels() << endl;
-    //grayImage1.getTextureReference().readToPixels(pixelsGoal);
-    totalBrightness = 0;
+        totalBrightness = 0;
     
 	for (int i=0; i<vertices.size(); i++) {
 		
@@ -199,22 +203,12 @@ void ofApp::update(){
         t.y = ofClamp( t.y, 0, pixelsGoal.getHeight()-1 );
         float br = pixelsGoal.getColor(t.x, t.y).getBrightness();
 		
-		verticesGoal[i] *= 1 + br / 255.0 * 3.0;
-		//verticesNow[i] -= verticesGoal[i];
-		//cout << "Vertices: " << vertices[i] << endl;
-		//verticesTemp[i] = (verticesGoal[i] - verticesNow[i]) * 0.05;
-		//vertices[i] *= verticesGoal[i];
-		//vertices[i] *= verticesGoal[i];
-		//verticesTemp[i] = vertices[i];
+		verticesGoal[i] *= 1 + br / 255.0 * 2.0;
         totalBrightness += br;
-		//verticesNow[i] = vertices[i];
     }
 	
-    //brightMean += 1;
-    //refBrightness += totalBrightness;
-    if (totalBrightness > 200000){
+        if (totalBrightness > 200000){
         bLearnBakground = true;
-        //refBrightness = totalBrightness;
         totalBrightness = 0;
     }
     
@@ -233,7 +227,7 @@ void ofApp::update(){
 void ofApp::draw(){
 
     //comboFBO.draw(0,480);
-    grayImage1.draw(0, 0);
+    grayImageTemp.draw(0, 0);
     grayBg1.draw(0, 240);
     grayDiff1.draw(0, 480);
     colorImg1.draw(0, 720);

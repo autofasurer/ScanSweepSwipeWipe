@@ -54,6 +54,7 @@ class ofApp : public ofBaseApp{
     ofPixels            pixelsNow;
     ofPixels            pixelsGoal;
     ofPixels            pixelsTemp;
+    ofPixels            pixelsFader;
     //FBO
     ofFbo fbo;
     
@@ -76,9 +77,9 @@ class ofApp : public ofBaseApp{
     
     ofxCvColorImage			colorImg1;
     
-    ofxCvGrayscaleImage 	grayImage1, grayBg1, grayDiff1;
+    ofxCvGrayscaleImage 	grayImage1, grayImage2, grayImageTemp, grayBg1, grayDiff1;
     
-    int 				threshold;
+    int 				threshold, imgFader;
     bool				bLearnBakground;
 
     
