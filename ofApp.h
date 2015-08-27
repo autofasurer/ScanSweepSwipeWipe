@@ -35,7 +35,7 @@ class ofApp : public ofBaseApp{
     float               y, distance, distanceGoal, slice, color, gap, gapOffset, throb, totalBrightness, refBrightness, brightMean;
     float               rotNow, rotThen, mRota;
     int                 encOffset;
-    bool                showModel, showPlane;
+    bool                showModel, showPlane, trigger;
 
     //Phidgets
     ofxPhidgetsEncoder  enc;

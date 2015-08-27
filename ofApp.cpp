@@ -16,10 +16,10 @@ void ofApp::setup(){
     refBrightness = 0;
     brightMean = 1;
     //animation
-    throb = sin(ofGetElapsedTimef())* 2.;
+    //throb = sin(ofGetElapsedTimef())* 2.;
 	imgFader = 5;
     //3DCamera init
-    distance = 960;
+    distance = 370;
     distanceGoal = 960;
     slice = 5.0;
     panoWidth = 960;
@@ -27,9 +27,9 @@ void ofApp::setup(){
     //color
     fader = 0.;
     color = 255;
-    brightness = 1. ;
-    contrast = 5;
-    saturation = 0.8;
+    brightness = 1.5 ;
+    contrast = 3.5;
+    saturation = -4.5;
     brcosaShader.load( "shaders/brcosa_GLSL");
 
     //VideoCam init & FBO setup
@@ -68,6 +68,7 @@ void ofApp::setup(){
 
     ifKit.init();
     turning = 0;
+    trigger = 0;
     startTime = ofGetElapsedTimef();
     timer = ofGetElapsedTimef() - startTime;
 
@@ -104,7 +105,8 @@ void ofApp::update(){
 
     //Check button and start motor
 
-    if(!turning && ifKit.pushed){ //If the motor is not already turning and the button is pushed
+    //if(!turning && ifKit.pushed){ //If the motor is not already turning and the button is pushed
+    if(!turning && trigger && timer > 30){
         turning = 1;
         startTime = ofGetElapsedTimef();
         timer = ofGetElapsedTimef() - startTime;
@@ -116,13 +118,16 @@ void ofApp::update(){
     }
     if (turning){
         if(timer > 40){
-            ifKit.pushed = false;
+            //ifKit.pushed = false;
             turning = 0;
             cout << "TURN IT OFF!" << endl;
             index = 0;
             state = 0;
+            trigger = 0;
             ifKit.digiOut(index, state);
-            distanceGoal = 960;
+            startTime = ofGetElapsedTimef();
+            timer = ofGetElapsedTimef() - startTime;
+            //distanceGoal = 960;
         }
         //else{
             //cout  << "time passed since buttong push: " << timer << endl;
@@ -215,11 +220,12 @@ void ofApp::update(){
         t.y = ofClamp( t.y, 0, pixelsGoal.getHeight()-1 );
         float br = pixelsGoal.getColor(t.x, t.y).getBrightness();
 
-		verticesGoal[i] *= 1 + br / 255.0 * 2.0;
+		verticesGoal[i] *= 1 + br / 255.0 * 1.5;
         totalBrightness += br;
     }
 
         if (totalBrightness > 200000){
+        trigger = 1;
         bLearnBakground = true;
         totalBrightness = 0;
     }
@@ -231,19 +237,19 @@ void ofApp::update(){
 
     //update timer
     timer = ofGetElapsedTimef() - startTime;
-
-    animate();
+    //cout << "timer: " << timer << endl;
+    //animate();
 }
 
 //--------------------------------------------------------------
 void ofApp::draw(){
 
     //comboFBO.draw(0,480);
-    blobFBO.draw(0,0);
+    //blobFBO.draw(0,0);
     //grayImageTemp.draw(0, 0);
-    grayBg1.draw(0, 240);
-    grayDiff1.draw(0, 480);
-    colorImg1.draw(0, 720);
+    //grayBg1.draw(0, 240);
+    //grayDiff1.draw(0, 480);
+    //colorImg1.draw(0, 720);
 
     //BRCOSA
 
@@ -268,7 +274,7 @@ brcosaShader.begin();
                     //model.drawFaces();
                     sphere.rotate(rotNow * meshDir, 0, 1, 0);
                     sphere.drawWireframe();
-                    sphere.drawVertices();
+                    //sphere.drawVertices();
             ofDisableDepthTest();
         glDisable(GL_CLIP_PLANE1);
         glDisable(GL_CLIP_PLANE0);
@@ -327,11 +333,11 @@ void ofApp::keyPressed(int key){
         encOffset = enc.encPos;
     }
     else if (key == OF_KEY_UP){
-		distanceGoal += 10;
+		distance += 10;
 		cout << "Distance: " << distance << endl;
     }
     else if (key == OF_KEY_DOWN){
-		distanceGoal -= 10;
+		distance -= 10;
 		cout << "Distance: " << distance << endl;
     }
     else if (key == 'l'){
@@ -358,13 +364,13 @@ void ofApp::gotMessage(ofMessage msg){
 
 //--------------------------------------------------------------
 void ofApp::animate(){
-    throb = sin(ofGetElapsedTimef())* 2.0;
+    /*throb = sin(ofGetElapsedTimef())* 2.0;
 
     if (timer >= 5 && timer <= 6 ){
             distanceGoal = -100;
     }
     distance += (distanceGoal - distance) * 0.05 + throb;
-    //slice = abs(sin(ofGetElapsedTimef())*10) + 1;
+    //slice = abs(sin(ofGetElapsedTimef())*10) + 1;*/
 }
 
 //--------------------------------------------------------------
