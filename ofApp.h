@@ -43,21 +43,22 @@ class ofApp : public ofBaseApp{
     int index, state, turning;
 
     //Texture
-    ofTexture           tex0;
+    ofTexture           tex0, tex1;
 
     //Video Camera & cam thread
     ofTexture			videoTexture0, videoTexture1, videoTexture2;
     int 				camWidth;
     int 				camHeight;
-    ofFbo               comboFBO;
+    int                 panoWidth, panoHeight;
+    ofFbo               comboFBO, blobFBO;
     MyThread            thread;
     ofPixels            pixelsNow;
     ofPixels            pixelsGoal;
     ofPixels            pixelsTemp;
     ofPixels            pixelsFader;
     //FBO
-    ofFbo fbo;
-    
+    //ofFbo fbo, fboBlobs;
+
     vector<ofPoint> vertices;
     vector<ofPoint> vertices0;
     vector<ofPoint> verticesTemp;
@@ -74,14 +75,13 @@ class ofApp : public ofBaseApp{
     double eqn1[4] = {0., -0.1, 0.1, 23.};
     //double eqn2[4] = {0.0, 1.0, 0.0, 0.0};
     //double eqn3[4] = {0.0, 0.0, 0.0, 0.0};
-    
+
     ofxCvColorImage			colorImg1;
-    
     ofxCvGrayscaleImage 	grayImage1, grayImage2, grayImageTemp, grayBg1, grayDiff1;
-    
+    ofxCvContourFinder      contourfinder;
     int 				threshold, imgFader;
     bool				bLearnBakground;
 
-    
+
 
 };
