@@ -12,7 +12,7 @@ void ofApp::setup(){
     ofHideCursor();
     ofSetFullscreen(true);
     ofEnableDepthTest();
-    
+
     refBrightness = 0;
     brightMean = 1;
     //animation
@@ -22,7 +22,8 @@ void ofApp::setup(){
     distance = 960;
     distanceGoal = 960;
     slice = 5.0;
-
+    panoWidth = 960;
+    panoHeight = 240;
     //color
     fader = 0.;
     color = 255;
@@ -34,27 +35,29 @@ void ofApp::setup(){
     //VideoCam init & FBO setup
     camWidth 		= 320;	// try to grab at this size.
 	camHeight 		= 240;
-    comboFBO.allocate(480, 240);
+    comboFBO.allocate(panoWidth, panoHeight);
+    blobFBO.allocate(panoWidth, panoHeight);
     videoTexture0.allocate(camWidth,camHeight, GL_RGB);
     videoTexture1.allocate(camWidth,camHeight, GL_RGB);
     videoTexture2.allocate(camWidth,camHeight, GL_RGB);
 
-    colorImg1.allocate(480, 240);
-    grayImage1.allocate(480, 240);
-    grayBg1.allocate(480, 240);
-    grayDiff1.allocate(480, 240);
+    colorImg1.allocate(panoWidth, panoHeight);
+    grayImage1.allocate(panoWidth, panoHeight);
+    grayBg1.allocate(panoWidth, panoHeight);
+    grayDiff1.allocate(panoWidth, panoHeight);
     thread.startThread(true);
     float w = comboFBO.getWidth();
     float h = comboFBO.getHeight();
-    pixelsNow.allocate(480, 240, 3);
+    pixelsNow.allocate(panoWidth, panoHeight, 3);
     pixelsNow.clear();
-    pixelsGoal.allocate(480,240, 3);
+    pixelsGoal.allocate(panoWidth, panoHeight, 3);
     pixelsGoal.clear();
-    pixelsTemp.allocate(480,240, 3);
+    pixelsTemp.allocate(panoWidth, panoHeight, 3);
     pixelsTemp.clear();
-	pixelsFader.allocate(480, 240, 1);
+	pixelsFader.allocate(panoWidth, panoHeight, 1);
 	pixelsFader.set(imgFader);
-    tex0.allocate(480, 240, 3);
+    tex0.allocate(panoWidth, panoHeight, 3);
+    tex1.allocate(panoWidth, panoHeight, 3);
 
     //Phidget init
     //rotNow = rotThen = rotDif = 0.0;
@@ -125,7 +128,7 @@ void ofApp::update(){
             //cout  << "time passed since buttong push: " << timer << endl;
         //}
     }
-    
+
     //cout << timer;
     rotThen = mRota;
     enc.update();
@@ -137,45 +140,54 @@ void ofApp::update(){
 
     //cout << mRota << endl;
     //cout << model.getRotationAngle(1) << endl;
-  
+
     thread.lock();
     videoTexture0.loadData(thread.pixels0);
     videoTexture1.loadData(thread.pixels1);
     videoTexture2.loadData(thread.pixels2);
     thread.unlock();
-    
+
     //Combine the three camera images into 1 FBO
     comboFBO.begin();
     videoTexture0.draw( 0, 0);
-    videoTexture1.draw(160, 0);
-    videoTexture2.draw(320, 0);
+    videoTexture1.draw(320, 0);
+    videoTexture2.draw(640, 0);
     comboFBO.end();
-   
-    
+
     tex0=comboFBO.getTextureReference(); //put FBO containing the combined cam textures into an ofTexture...
     tex0.readToPixels(pixelsGoal); //...and copy the pixels from the texture into an ofPixels object...
     pixelsGoal.setImageType(OF_IMAGE_COLOR); //...and set the color to RGB, discarding the Alpha channel...
     colorImg1.setFromPixels(pixelsGoal); //...finally copy the pixels into an OpenCV color image
-    
+
     grayImage1 = colorImg1;
     if (bLearnBakground == true){
         grayBg1 = grayImage1; // the = sign copys the pixels from grayImage into grayBg (operator overloading)
         bLearnBakground = false;
     }
-    
+
     // take the abs value of the difference between background and incoming and then threshold:
     grayDiff1.absDiff(grayBg1, grayImage1);
     grayDiff1.threshold(threshold);
-	
+    contourfinder.findContours(grayDiff1, 20, (panoWidth*panoHeight)/3, 10, true);
+    blobFBO.begin();
+    ofClear(0,0,0);
+    contourfinder.draw(0,0);
+    blobFBO.end();
+
+    tex1=blobFBO.getTextureReference();
+    tex1.readToPixels(pixelsGoal);
+    pixelsGoal.setImageType(OF_IMAGE_GRAYSCALE);
+    grayDiff1.setFromPixels(pixelsGoal);
+
 	grayImage2.setFromPixels(pixelsFader);
-    
+
 	grayImage1 *= grayDiff1;
 	grayImage1 += grayImageTemp;
-	
+
 	grayImageTemp = grayImage1;
 	grayImageTemp -= grayImage2;
-	
-	pixelsGoal.setFromPixels(grayImage1.getPixels(), 480, 240, 1);
+
+	pixelsGoal.setFromPixels(grayImage1.getPixels(), panoWidth, panoHeight, 1);
 
     //Sphere Deform update
     vector<ofPoint> &vertices = sphere.getMesh().getVertices();
@@ -193,25 +205,25 @@ void ofApp::update(){
 		vertices[i] *= verticesGoal[i];
     }
         totalBrightness = 0;
-    
+
 	for (int i=0; i<vertices.size(); i++) {
-		
+
 		verticesGoal[i] *= 0;
 		verticesGoal[i] += 1;
 		ofVec2f t = sphere.getMesh().getTexCoords()[i];
         t.x = ofClamp( t.x, 0, pixelsGoal.getWidth()-1 );
         t.y = ofClamp( t.y, 0, pixelsGoal.getHeight()-1 );
         float br = pixelsGoal.getColor(t.x, t.y).getBrightness();
-		
+
 		verticesGoal[i] *= 1 + br / 255.0 * 2.0;
         totalBrightness += br;
     }
-	
+
         if (totalBrightness > 200000){
         bLearnBakground = true;
         totalBrightness = 0;
     }
-    
+
     eqn0[3] = eqn1[3] = slice;
 
     glClipPlane(GL_CLIP_PLANE0, eqn0);
@@ -227,11 +239,12 @@ void ofApp::update(){
 void ofApp::draw(){
 
     //comboFBO.draw(0,480);
-    grayImageTemp.draw(0, 0);
+    blobFBO.draw(0,0);
+    //grayImageTemp.draw(0, 0);
     grayBg1.draw(0, 240);
     grayDiff1.draw(0, 480);
     colorImg1.draw(0, 720);
-  
+
     //BRCOSA
 
 brcosaShader.begin();
@@ -289,7 +302,7 @@ void ofApp::keyPressed(int key){
         brightness += 0.1;
           cout << "brightness:" << brightness << endl;
     }
-    else if (key == 'a'){              
+    else if (key == 'a'){
         brightness -= 0.1;
         cout << "brightness:" << brightness << endl;
     }
@@ -334,7 +347,7 @@ void ofApp::keyPressed(int key){
     threshold --;
     if (threshold < 0) threshold = 0;
     }
-    
+
 }
 
 
