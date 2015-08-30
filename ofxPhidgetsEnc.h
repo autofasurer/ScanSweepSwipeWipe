@@ -5,7 +5,7 @@
 
 //// ofxaddon extension by Naoto HIEDA, 2014
 
-//// simple phidgetEncoder positiont readout by Brecht Debackere 2014
+//// simple phidgetEncoder position readout by Brecht Debackere 2015
 
 
 #include <stdio.h>
@@ -25,7 +25,10 @@ protected:
     static int CCONV InputChangeHandler(CPhidgetInterfaceKitHandle phid, void *usrptr, int Index, int State);
 	static int CCONV OutputChangeHandler(CPhidgetInterfaceKitHandle phid, void *usrptr, int Index, int State);
 	static int CCONV SensorChangeHandler(CPhidgetInterfaceKitHandle phid, void *usrptr, int Index, int Value);
-	bool initialized;
+	static int CCONV InputChangeHandler(CPhidgetMotorControlHandle phid, void *usrptr, int Index, int State);
+	static int CCONV OutputChangeHandler(CPhidgetMotorControlHandle phid, void *usrptr, int Index, int State);
+	static int CCONV SensorChangeHandler(CPhidgetMotorControlHandle phid, void *usrptr, int Index, int Value);
+    bool initialized;
 
 public:
 	//virtual void init() = 0;
@@ -72,3 +75,19 @@ private:
 	CPhidgetInterfaceKitHandle ifKit = 0;
 };
 
+class ofxPhidgetsMotorcontrol : public ofxPhidgets {
+    
+public:
+    void init();
+    void setVelocity(CPhidgetMotorControlHandle phid, int index, double velocity);
+    void exit();
+	~ofxPhidgetsMotorcontrol() { exit(); };
+    
+private:
+    int display_properties(CPhidgetMotorControlHandle phid);
+	int result, numSensors, i;
+	const char *err;
+    
+	//Declare an InterfaceKit handle
+	CPhidgetMotorControlHandle motorCtrl = 0;
+};

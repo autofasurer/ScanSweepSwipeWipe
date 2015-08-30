@@ -43,6 +43,9 @@ int CCONV ofxPhidgets::ErrorHandler(CPhidgetHandle phid, void *userptr, int Erro
 
 
 //Display the properties of the attached phidget to the screen.  We will be displaying the name, serial number and version of the attached device.
+/************************************************************************************************************/
+/************************************************************************************************************/
+
 
 int ofxPhidgetsEncoder::display_properties(CPhidgetEncoderHandle phid)
 {
@@ -202,4 +205,60 @@ void ofxPhidgetsIfkit::exit()
 	printf("Closing...\n");
 	CPhidget_close((CPhidgetHandle)ifKit);
 	CPhidget_delete((CPhidgetHandle)ifKit);
+}
+
+/************************************************************************************************************/
+/************************************************************************************************************/
+
+
+int ofxPhidgetsMotorcontrol::display_properties(CPhidgetMotorControlHandle phid)
+{
+	int serialNo, version, numInputs, numOutputs, numSensors, triggerVal, ratiometric, i;
+	const char* ptr;
+    
+	CPhidget_getDeviceType((CPhidgetHandle)phid, &ptr);
+	CPhidget_getSerialNumber((CPhidgetHandle)phid, &serialNo);
+	CPhidget_getDeviceVersion((CPhidgetHandle)phid, &version);
+    
+    printf("Serial Number: %10d\nVersion: %8d\n", serialNo, version);
+    
+	return 0;
+}
+
+
+void ofxPhidgetsMotorcontrol::init()
+{
+	initialized = false;
+    
+	//create the Motorcontrol object
+	CPhidgetMotorControl_create(&motorCtrl);
+    
+	//Set the handlers to be run when the device is plugged in or opened from software, unplugged or closed from software, or generates an error.
+	CPhidget_set_OnAttach_Handler((CPhidgetHandle)motorCtrl, AttachHandler, NULL);
+	CPhidget_set_OnDetach_Handler((CPhidgetHandle)motorCtrl, DetachHandler, NULL);
+	CPhidget_set_OnError_Handler((CPhidgetHandle)motorCtrl, ErrorHandler, NULL);
+    
+	//open the encoder for device connections
+	CPhidget_open((CPhidgetHandle)motorCtrl, -1);
+    
+	//get the program to wait for an encoder  device to be attached
+	printf("Waiting for encoder to be attached....");
+	if((result = CPhidget_waitForAttachment((CPhidgetHandle)motorCtrl, 1000)))
+	{
+		CPhidget_getErrorDescription(result, &err);
+		printf("Problem waiting for attachment: %s\n", err);
+		return 0;
+	}
+    
+	//Display the properties of the attached interface kit device
+	display_properties(motorCtrl);
+    //read interface kit event data
+	printf("Reading.....\n");
+    
+	initialized = true;
+}
+
+void ofxPhidgetsMotorcontrol::setVelocity(CPhidgetMotorControlHandle phid, int index, double velocity)
+{
+    
 }
